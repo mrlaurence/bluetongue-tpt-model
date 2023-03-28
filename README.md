@@ -1,6 +1,12 @@
+# README
+
 This repository contains all the code used in the R-Project "A Compartmental Disease Model to Describe Long-Term Bluetongue Virus Behaviour, with Analysis of Overwintering in France".
 
+To run a simulation of the Bluetongue_TPT_Model, configure the simulation parameters in Bluetongue_TPT_Model/Run.m (and Bluetongue_TPT_Model.Define_Within_Farm_Parameters() if you wish to change within-farm parameters) and then run Bluetongue_TPT_Model.Run() in MATLAB 2023a.
+
 All files needed for the compartmental model are contained in Bluetongue_TPT_Model. Files in Other were used for smaller experiments in the course of the project and are provided for completeness but without documentation.
+
+# Licenses and Attribution
 
 All .m files were written by Laurence Dhonau, with the exception of haversine.m, which was written by Josiah Renfree, obtained from MathWorks MATLAB Central File Exchange and included under the license provided in the file.
 
@@ -23,7 +29,3 @@ We constructed the following files in the Datasets folder based on the climate d
 
 The files GLW3_CATTLE_DA_FRANCE_POINTS.geojson and GLW3_SHEEP_DA_FRANCE_POINTS.geojson were produced using the QGIS software packaged from the Gridded Livestock of the World - 2010 (GLW 3) dataset. This is downloadable from the Harvard Dataverse here: https://dataverse.harvard.edu/dataverse/glw. The dataset is in the public domain (https://creativecommons.org/publicdomain/zero/1.0/). Details of the GLW dataset may be found in the following paper:
 Gilbert M, Nicolas G, Cinardi G, Van Boeckel TP, Vanwambeke SO, Wint GRW, Robinson TP. Global distribution data for cattle, buffaloes, horses, sheep, goats, pigs, chickens and ducks in 2010. Sci Data. 2018 Oct 30;5:180227. doi: 10.1038/sdata.2018.227. PMID: 30375994; PMCID: PMC6207061.
-
-# README
-
-To run a simulation of the Bluetongue_TPT_Model, configure the simulation parameters in Bluetongue_TPT_Model/Run.m (and Bluetongue_TPT_Model.Define_Within_Farm_Parameters() if you wish to change within-farm parameters) and then run Bluetongue_TPT_Model.Run() in MATLAB 2023a.

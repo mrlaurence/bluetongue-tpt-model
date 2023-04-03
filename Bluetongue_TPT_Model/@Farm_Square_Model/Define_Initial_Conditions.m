@@ -18,7 +18,7 @@ function Define_Initial_Conditions(self)
     % The bool must be false. The number of elements in the vector must equal the number
     % of compartments which "X" matches to when the Labelled_Tensor is searched by query
     % string (see Labelled_Tensor.Set_By_Query_String()). For example, the Labelled_Tensor
-    % could contain compartments "X_Y1", "X_Y2", "X_A", "X_P1" and "X_V". In this case,
+    % could contain compartments "X_Y1.", "X_Y2.", "X_A.", "X_P1." and "X_V.". In this case,
     % the value of each of these compartments is set to the corresponding value in the
     % vector.
     %
@@ -118,6 +118,6 @@ function Define_Initial_Conditions(self)
 
     % Set the suspectible vector compartment based on the total populations and
     % vector-to-host ratios.
-    self.vectorStates.Set_Val("S", 1, round(self.parameters.m_C * (totalDairyCattle + ...
+    self.vectorStates.Set_Val("S.", 1, round(self.parameters.m_C * (totalDairyCattle + ...
     totalBeefCattle) + self.parameters.m_S * totalSheep));
 end

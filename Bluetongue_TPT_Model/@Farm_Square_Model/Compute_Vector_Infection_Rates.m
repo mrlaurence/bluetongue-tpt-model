@@ -22,7 +22,11 @@ infectedCattleFraction, infectedSheepFraction)
     vectorActivity = Farm_Square_Model.Compute_Vector_Activity(par, t, par.activityNormaliser);
 
     % Compute the reciprocal of the time interval between vector blood meals.
-    a = 0.0002 * temp * (temp - 3.7) * (41.9 - temp)^(1/2.7);
+    if temp >= 3.7 && temp <= 41.9
+        a = 0.0002 * temp * (temp - 3.7) * (41.9 - temp)^(1/2.7);
+    else
+        a = 0;
+    end
 
     % Compute the force of infection.
     lambda_V = par.beta * a * vectorActivity * (phi * infectedCattleFraction + ...

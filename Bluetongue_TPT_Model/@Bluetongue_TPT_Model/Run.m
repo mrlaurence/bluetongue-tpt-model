@@ -1,14 +1,24 @@
-function Run()
+function Run(TPTVALUE)
 
     % Run the BTV model across all of France.
     %
     % AUTHOR: Laurence Dhonau.
 
-    % We initialise the farmDistanceMatrix as a global variable since it is very
+    % We initialise the farmSquareDistanceMatrix as a global variable since it is very
     % large (approx. 600 MB) so takes a non-negligible amount of time to load into
     % memory. By using a global variable, we only need load the matrix into memory
     % on the first simulation after launching MATLAB.
     global farmSquareDistanceMatrix;
+
+    % Generate a name used for the various export files.
+    exportFileName = sprintf("BTV_Simulation_%s_%d", datetime('today'), ...
+    round(rand * 100000));
+
+    % Create an Outputs folder if it does not already exist.
+    [~,~] = mkdir("Outputs");
+
+    % Save all Command Window output to a log file until the function exits.
+    diary(sprintf("Outputs/%s.log", exportFileName));
 
     fprintf("[INFO] This is the Bluetongue_TPT_Model v1.0. Starting simulation.\n");
 
@@ -17,8 +27,8 @@ function Run()
     % Define the start and end times for the simulation (inclusive). Time is measured in
     % days, where day 0 is 01/01/2006. The end time must not exceed day 1460 (31/12/2009)
     % since we do not import temperature data for days after this time.
-    simulationStartTime = 260;
-    simulationEndTime = 260 + 50;
+    simulationStartTime = 236;
+    simulationEndTime = 236 + 300;
 
     % Define the time step for the simulation. This must currently be set to 1 (otherwise
     % expect many errors) due to the implementation of between-farm diffusion we inherit
@@ -34,8 +44,8 @@ function Run()
     % seedFarmSquareLongLats should contain two elements: the longitude and latitude (in
     % decimal degrees to 3 decimal places) of a farm square. Each farm square used to seed
     % the simulation must contain at least 1 host in the GLW v3 dataset.
-    seedFarmSquareLongLats = [4.042, 50.125;
-                              4.042, 50.208];
+    seedFarmSquareLongLats = [4.708, 49.958;
+                              4.792, 50.042];
 
     % Define the parameters used for between-farm BTV transmission: gamma (transmission
     % parameter) and D (diffusion coefficient).
@@ -50,7 +60,7 @@ function Run()
     initialInfectedVectorCountBounds = [1, 100];
 
     % Define the size of the MATLAB parallel pool to use for tau-leap.
-    parallelPoolSize = 6;
+    parallelPoolSize = 16;
 
     fprintf("[INFO] Drawing within-farm transmission parameters.\n");
 
@@ -84,7 +94,7 @@ function Run()
     % Farm_Square_Table() for construction details.
     farmSquareTable = Bluetongue_TPT_Model.Load_Dataset("Datasets/Farm_Square_Table.mat");
 
-    % Only load farmDistanceMatrix from disk if it is not already in memory (from a
+    % Only load farmSquareDistanceMatrix from disk if it is not already in memory (from a
     % previous simulation).
     if max(size(farmSquareDistanceMatrix)) == 0
 
@@ -155,7 +165,7 @@ function Run()
         initialInfectedVectorCountBounds(1)) + initialInfectedVectorCountBounds(1));
 
         % Insert infected vectors to seed infection *within* the farm square.
-        farmSquareModel.vectorStates.Set_Val("I", 1, initialInfectedVectorCount);
+        farmSquareModel.vectorStates.Set_Val("I.", 1, initialInfectedVectorCount);
 
         % Update the farm square table to indicate that the farm square has been
         % infected, along with the time of infection.
@@ -175,7 +185,7 @@ function Run()
 
     % Initialise a parallel pool with the requested number of workers
     if isempty(gcp('nocreate'))
-        parpool(parallelPoolSize);
+        parpool('Threads', parallelPoolSize);
     end
 
     fprintf("[INFO] Parallel pool initialised. Beginning simulation.\n");
@@ -204,16 +214,9 @@ function Run()
 
         fprintf("[INFO] ----- Running simulation for day %d. -----\n", simulationTime);
 
-        % Include a memory report every 10 time steps and allow the user to pause the
-        % simulation if they wish.
-        if rem(simulationTime - simulationStartTime, 10) == 0
-            memoryStruct = memory;
-            fprintf("[INFO] - Memory: MATLAB using %0.2f GB of %0.2f GB avaliable.\n", ...
-            memoryStruct.MemUsedMATLAB / 1024^3, memoryStruct.MemAvailableAllArrays / 1024^3);
-
-            if isfile("PAUSE")
-                input("[INPUT] Simulation paused. Press Return to continue. ");
-            end
+        % Allow the user to pause the simulation if they wish every 10 time steps.
+        if rem(simulationTime - simulationStartTime, 10) == 0 && isfile("PAUSE")
+            input("[INPUT] Simulation paused. Press Return to continue. ");
         end
 
         %% ----- SUBSECTION: BETWEEN-FARM TRANSMISSION -----
@@ -247,11 +250,16 @@ function Run()
                 Compute_Mid_Mortality_Time_Series(infectedFarmSquareID, tau_j, ...
                 simulationTime, farmSquareStationDictionary, stationTemperatureDictionary, ...
                 vectorMortalityDictionary);
+
+                % Retrieve the row of the farmSquareDistanceMatrix corresponding to the
+                % farm square.
+                farmSquareDistances = farmSquareDistanceMatrix(infectedFarmSquareID, :);
     
-                % Add the mortality time series to the cache, along with the square ID and
-                % times of most recent and first infection.
+                % Add the mortality time series to the cache, along with the square ID,
+                % row of farmSquareDistanceMatrix and times of most recent and first
+                % infection.
                 infectedFarmSquareCache{j} = {farmSquareInfected, infectedFarmSquareID, ...
-                tau_j, farmSquareMidMortalityTimeSeries, taudash_j};
+                tau_j, farmSquareMidMortalityTimeSeries, taudash_j, farmSquareDistances};
             else
 
                 % If the farm square is not currently infected, we need not cache
@@ -301,7 +309,7 @@ function Run()
 
                     % Retrieve the distance between the non-infected farm square and the
                     % infected one.
-                    farmSquareSeparation = farmSquareDistanceMatrix(infectedFarmSquareID, k);
+                    farmSquareSeparation = infectedFarmSquareCache{j}{6}(k);
 
                     % Retrieve the t value on which the infected square became infected
                     % (most recently).
@@ -421,9 +429,6 @@ function Run()
         + " [Time: %0.1f seconds].\n", size(newlyInfectedSquareIDs, 2), ...
         toc(betweenFarmTransmissionStopwatch));
 
-        infectedFarmTimeSeries(simulationTime - simulationStartTime + 2) = ...
-        sum(farmSquareTableMatrix(:,6));
-
         % ----- END SUBSECTION -----
 
         %% ----- SUBSECTION: WITHIN-FARM TRANSMISSION -----
@@ -442,6 +447,11 @@ function Run()
         % loop below.
         farmSquareTableMatrixSliceSix = farmSquareTableMatrix(infectedFarmSquareIDs,6);
         farmSquareTableMatrixSliceNine = farmSquareTableMatrix(infectedFarmSquareIDs,9);
+
+        % Initalise a variable to track whether Tau_Leap_Step produces a NaN value in this
+        % time step. If it does not, the value remains at 0. If it does, the value is set
+        % to the sum of the IDs of the farm squares which threw the error.
+        nanErrorThrown = 0;
 
         % Iterate over the potentially infected farm squares using parallel workers.
         parfor i = 1:size(infectedFarmSquareIDs, 2)
@@ -482,6 +492,10 @@ function Run()
                     fprintf("[WARN] Hosts are extinct in farm square %d.\n", farmSquareID);
 
                     break;
+
+                elseif exitCode == 3
+                    nanErrorThrown = nanErrorThrown + farmSquareID;
+                    break;
                 end
             end
 
@@ -490,9 +504,20 @@ function Run()
             infectedFarmSquareModels{i}{2} = farmSquareModel;
         end
 
+        if nanErrorThrown ~= 0
+            input("[ERROR] Tau_Leap_Step has produced at least one NaN value." + ...
+            " Something has gone very wrong. Press Return to continue (or use a" + ...
+            " breakpoint to pause here). ");
+        end
+
         % Update the farm square table based on changes made during the parfor loop.
         farmSquareTableMatrix(infectedFarmSquareIDs, 6) = farmSquareTableMatrixSliceSix;
         farmSquareTableMatrix(infectedFarmSquareIDs, 9) = farmSquareTableMatrixSliceNine;
+
+        % Add the number of infected farm squares at the end of this time step to
+        % infectedFarmTimeSeries.
+        infectedFarmTimeSeries(simulationTime - simulationStartTime + 2) = ...
+        sum(farmSquareTableMatrix(:,6));
 
         fprintf("[INFO] - Within-farm transmission (τ-leap) complete for %d farm squares." ...
         + " [Time: %0.1f seconds].\n", size(infectedFarmSquareIDs, 2), ...
@@ -524,11 +549,20 @@ function Run()
      generatedValidParams i infectedFarmSquareCache infectedFarmSquareID infectedFarmSquareIDs ...
      initialInfectedVectorCount j k memoryStruct newlyInfectedSquareIDs simulationStopwatch ...
      simulationTime sizeOfInfectedFarmSquareModels squareGainedInfection tau tau_j taudash_j ...
-     withinFarmTransmissionStopwatch;
+     withinFarmTransmissionStopwatch p farmSquareDistanceMatrix ans;
 
-     input("[INPUT] Press Return to export the simulation data to a MAT file (or use" ...
-     + " a breakpoint to pause here). ");
+     %input("[INPUT] Press Return to export the simulation data to a MAT file (or use" ...
+     %+ " a breakpoint to pause here). ");
+
+     fprintf("[INFO] Saving data...\n");
 
      % Export all workspace variables to a MAT file.
-     save(sprintf("BTV_Simulation_%s_%d.mat", datetime('today'), round(rand * 100000)));
+     save("-v7.3", sprintf("Outputs/%s.mat", exportFileName));
+
+     % Export first infection times for each farm square to a GeoJSON file.
+     Bluetongue_TPT_Model.Export_Infection_GeoJSON("Datasets/GLW3_CATTLE_DA_FRANCE_POINTS.geojson", ...
+     farmSquareTable, sprintf("Outputs/%s.geojson", exportFileName));
+
+     % Stop saving Command Window output to a log file.
+     diary off;
 end

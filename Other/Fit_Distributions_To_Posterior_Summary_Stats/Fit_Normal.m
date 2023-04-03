@@ -3,7 +3,7 @@ parameter_upper_95_interval)
     
     best_mu = parameter_mean;
 
-    variance = 0:0.0000001:2;
+    variance = 0:0.01:200000;
 
     lower_intervals = norminv(0.025, best_mu, sqrt(variance));
 

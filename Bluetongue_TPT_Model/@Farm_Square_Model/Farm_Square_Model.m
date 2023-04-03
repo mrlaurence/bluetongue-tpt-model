@@ -96,12 +96,23 @@ classdef Farm_Square_Model < handle
             % specifying the host population structures to initialise the model with. The
             % full form of this structure is specified in Farm_Square_Model.Define_
             % Initial_Conditions().
+            
+            generatedValidParams = false;
 
-            % Compute vector-to-host ratio for cattle in the farm square.
-            parameters.m_C = gamrnd(parameters.s_V, parameters.mu_V / parameters.s_V);
-        
-            % Compute vector-to-host ratio for sheep in the farm square.
-            parameters.m_S = gamrnd(parameters.s_V, parameters.mu_V / parameters.s_V);
+            % Draw vector-to-host ratio parameters until they are positive. Note that the
+            % probability we have to redraw is low (< 10%).
+            while ~generatedValidParams
+
+                % Compute vector-to-host ratio for cattle in the farm square.
+                parameters.m_C = gamrnd(parameters.s_V, parameters.mu_V / parameters.s_V);
+            
+                % Compute vector-to-host ratio for sheep in the farm square.
+                parameters.m_S = gamrnd(parameters.s_V, parameters.mu_V / parameters.s_V);
+
+                if parameters.m_C >= 0 && parameters.m_S >= 0
+                    generatedValidParams = true;
+                end
+            end
 
             self.farmLatitude = farmLatitude;
             self.farmLongitude = farmLongitude;
@@ -127,14 +138,14 @@ classdef Farm_Square_Model < handle
             beefCattleStatesLabelMatrix);
 
             % Instantiate a Labelled_Tensor for sheep similarly.
-            sheepStatesLabelMatrix = ["X", vecsprintf("Y_%s", string(split(num2str(1 : ...
-            self.parameters.Kbar)))).', "Z"];
+            sheepStatesLabelMatrix = ["X.", vecsprintf("Y_%s.", string(split(num2str(1 : ...
+            self.parameters.Kbar)))).', "Z."];
             sheepStatesTensor = zeros([size(sheepStatesLabelMatrix), 1]);
             self.sheepStates = Labelled_Tensor(sheepStatesTensor, sheepStatesLabelMatrix);
 
             % Instantiate a Labelled_Tensor for vectors similarly.
-            vectorStatesLabelMatrix = ["S", vecsprintf("L_%s", string(split(num2str(1 : ...
-            self.parameters.k)))).', "I"];
+            vectorStatesLabelMatrix = ["S.", vecsprintf("L_%s.", string(split(num2str(1 : ...
+            self.parameters.k)))).', "I."];
             vectorStatesTensor = zeros([size(vectorStatesLabelMatrix), 1]);
             self.vectorStates = Labelled_Tensor(vectorStatesTensor, vectorStatesLabelMatrix);
 

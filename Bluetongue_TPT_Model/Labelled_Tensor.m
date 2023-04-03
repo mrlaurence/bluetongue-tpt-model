@@ -226,7 +226,7 @@ classdef Labelled_Tensor < handle
                     % Add the value in the tensor matching the label position with
                     % third-dimensional index given by index to the value in the time
                     % series for this index.
-                    timeSeries(i, 2) = timeSeries(i, 2) + self.tensor(labelPosition(j,1), ...
+                    timeSeries(i) = timeSeries(i) + self.tensor(labelPosition(j,1), ...
                     labelPosition(j,2), index);
                 end
                 

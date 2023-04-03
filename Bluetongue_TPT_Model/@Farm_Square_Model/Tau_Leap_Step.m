@@ -28,6 +28,8 @@ function exitCode = Tau_Leap_Step(self, ratesRequireRecalculation, tau, temp)
     % 0: Tau-leap step taken successfully and infection is present in the farm square.
     % 1: Tau-leap step taken successfully but infection is not present in the farm square.
     % 2: There are no cattle or sheep in the farm square. Tau-leap step not taken.
+    % 3: Tau_Leap_Step has produced at least one NaN value while generating the new model
+    % step. This is a critical error.
     %
     % AUTHOR: Laurence Dhonau.
 
@@ -221,9 +223,10 @@ function exitCode = Tau_Leap_Step(self, ratesRequireRecalculation, tau, temp)
         || max(max(isnan(self.beefCattleStates.tensor(:,:,end)))) == 1 ...
         || max(isnan(self.sheepStates.tensor(:,:,end))) == 1 ...
         || max(isnan(self.vectorStates.tensor(:,:,end))) == 1
-            input("[ERROR] Tau_Leap_Step has produced at least one NaN value for the new" + ...
-            " model state. Something has gone very wrong. Press Return to continue" + ...
-            " (or use a breakpoint to pause here). ");
+            fprintf("[ERROR] Tau_Leap_Step has produced at least one NaN value for the new" + ...
+            " model state. Something has gone very wrong.\n");
+            exitCode = 3;
+            return;
         end
 
         % Check if the provisionally-updated model state has all non-negative compartment
@@ -249,9 +252,8 @@ function exitCode = Tau_Leap_Step(self, ratesRequireRecalculation, tau, temp)
 
             % Check if we have already drawn 15 sets of event counts.
             if drawCount == 15
-                input(sprintf("[ERROR] τ-leap is likely stuck at t = %0.1f days (have tried 15" + ...
-                " Poisson draws). This may indicate τ is too large. Press Return to continue" + ...
-                " (or use a breakpoint to pause here). ", self.t));
+                fprintf("[ERROR] τ-leap is likely stuck at t = %0.1f days (have tried 15" + ...
+                " Poisson draws). This may indicate τ is too large.\n", self.t);
             end
 
             % Discard the model state updates we attempted.

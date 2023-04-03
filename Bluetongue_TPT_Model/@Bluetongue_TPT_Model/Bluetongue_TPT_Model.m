@@ -291,41 +291,41 @@ classdef Bluetongue_TPT_Model
             % ----- TPT PARAMETERS -----
             
             % Reciprocal of mean duration of youth in dairy cattle
-            parameters.omega = 1/365;
+            parameters.omega = 1/normrnd(480, 15.3);
         
             % Reciprocal of mean duration of youth in beef cattle
-            parameters.omegatilde = 1/550;
+            parameters.omegatilde = 1/normrnd(573, 15.8);
             
             % Number of stages of youth in dairy cattle
-            parameters.L = 3;
+            %parameters.L = ceil(1/(59.6 * parameters.omega)^2);
+            parameters.L = ceil(1/(80 * parameters.omega)^2);
         
             % Number of stages of youth in beef cattle
-            parameters.Ltilde = 5;
+            %parameters.Ltilde = ceil(1/(30.1 * parameters.omegatilde)^2);
+            parameters.Ltilde = ceil(1/(100 * parameters.omegatilde)^2);
             
             % Reciprocal of mean time till first pregnancy after reaching adulthood for
             % dairy/beef cattle
-            parameters.psi = 1/30;
+            parameters.psi = 1/(21*(normrnd(2, 0.255)-1));
             
             % Reciprocal of mean duration of pregnancy in dairy/beef cattle
-            parameters.delta = 1/282;
+            parameters.delta = 1/normrnd(279.9, 3.57);
             
             % Number of stages of pregnancy in dairy/beef cattle
-            parameters.M = 5;
+            %parameters.M = ceil(1/(6.22 * parameters.delta)^2);
+            parameters.M = ceil(1/(50 * parameters.delta)^2);
             
             % Reciprocal of mean duration of postpartum period in dairy cattle
-            parameters.epsilon = 1/45;
+            parameters.epsilon = 1/gamrnd(39.7, 1.51);
         
             % Reciprocal of mean duration of postpartum period in beef cattle
-            parameters.epsilontilde = 1/80;
+            parameters.epsilontilde = 1/gamrnd(53.0, 1.51);
             
             % Probability of successful pregnancy in dairy/beef cattle
-            parameters.eta = 0.7;
+            parameters.eta = betarnd(56.64, 14.16);
             
             % Probability of transplacental transmission from an infected dam to her calf
-            parameters.zeta = 8/115;
-        
-            % Proportion of beef calves selected for breeding, rather than culling
-            parameters.e = 0.17 / parameters.eta;
+            parameters.zeta = betarnd(3.40, 11.70);
         
             % ----- POPULATION PARAMETERS -----
         
@@ -336,14 +336,18 @@ classdef Bluetongue_TPT_Model
             parameters.s_V = gamrnd(3.31, 0.51);
         
             % Birth/non-disease associated mortality rate for sheep in the farm square
-            parameters.b_S = 0.003;
+            parameters.b_S = 1/152;
         
             % Cull rate for dairy cattle in postpartum period
             parameters.chi = parameters.epsilon * parameters.eta / 2;
-            % parameters.chi = parameters.epsilon / (2 / parameters.eta) * (1/log(2));
         
             % Cull rate for beef cattle in postpartum period
-            parameters.chitilde = 0.17 * parameters.epsilontilde;
+            parameters.chitilde = parameters.epsilontilde * betarnd(77.4, 291);
+
+            % ----- TPT PARAMETERS -----
+
+            % Proportion of beef calves selected for breeding, rather than culling
+            parameters.e = parameters.chitilde / (parameters.eta * parameters.epsilontilde);
         end
 
         function farmSquare = Initialise_Farm_Square_Model(longitude, latitude, parameters, startTime, glwPopulations)
@@ -465,7 +469,7 @@ classdef Bluetongue_TPT_Model
             farmSquareMaxMortalityTimeSeries) / 2;
         end
 
-        function Export_Infection_GeoJSON(glwJsonFileName, farmTable)
+        function Export_Infection_GeoJSON(glwJsonFileName, farmTable, exportFileName)
 
             % Exports a GeoJSON file encapsulating whether each farm square in France has
             % experienced infection prior to a point in time, and, if so, at what value of
@@ -483,7 +487,9 @@ classdef Bluetongue_TPT_Model
             % Bluetongue model at a point in time (produced by Bluetongue_TPT_Model.
             % Construct_Farm_Table()), from which farm infection status is derived.
             %
-            % Saves the resulting file to 'BTV_France_Simulation.geojson'.
+            % exportFileName: Name (or path) of a GeoJSON file to save to.
+            %
+            % Saves the resulting file to the path specified by exportFileName.
 
             % Import the farm square JSON file to a struct.
             glwJsonStruct = jsondecode(char(transpose(fread(fopen(glwJsonFileName),inf))));
@@ -516,7 +522,7 @@ classdef Bluetongue_TPT_Model
             outputJson = jsonencode(glwJsonStruct);
     
             % Write the JSON object to BTV_France_Simulation.geojson.
-            fprintf(fopen("BTV_France_Simulation.geojson", 'w'), "%s", outputJson);  
+            fprintf(fopen(exportFileName, 'w'), "%s", outputJson);  
 
             fclose('all');
         end
